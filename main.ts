@@ -1,17 +1,37 @@
 import*as f from"node:fs";
-const I=process.env.MAKEFUN_INPUT_DIR||"/input",O=process.env.MAKEFUN_OUTPUT_DIR||"/output",D=[[0,-1,"u","U"],[0,1,"d","D"],[-1,0,"l","L"],[1,0,"r","R"]];
-// [w,wall,goals,boxes,player] from XSB
-function P(t){let r=t.split("\n").filter(x=>x),h=r.length,w=0;for(let s of r)w=Math.max(w,s.length);let a=new Uint8Array(w*h).fill(1),g=[],b=[],p=-1;r.forEach((s,y)=>{for(let x=0;x<s.length;x++){let i=y*w+x,c=s[x];if(c=="#")continue;a[i]=0;if(".*+".includes(c))g.push(i);if("$*".includes(c))b.push(i);if("@+".includes(c))p=i}});for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(!x||!y||x==w-1||y==h-1)a[y*w+x]=1;return[w,a,g,b,p]}
-// live squares
-function L(w,a,g){let v=new Uint8Array(a.length),q=[...g];for(let x of g)v[x]=1;for(let i=0;i<q.length;i++)for(let[dx,dy]of D){let s=dy*w+dx,y=q[i]-s,z=y-s;if(!a[y]&&!a[z]&&!v[y]){v[y]=1;q.push(y)}}return v}
-// reachable-region lowest square from f (stamp s in n, stack k)
-function E(w,a,o,f,n,s,k){let l=f,m=0;k[m++]=f;n[f]=s;while(m){let p=k[--m];if(p<l)l=p;for(let[dx,dy]of D){let q=p+dy*w+dx;if(!a[q]&&!o[q]&&n[q]!=s){n[q]=s;k[m++]=q}}}return l}
-// shortest walk
-function K(w,a,o,f,t){if(f==t)return"";let v=new Int32Array(a.length).fill(-1),h=[],q=[f];v[f]=f;for(let i=0;i<q.length;i++){let p=q[i];if(p==t)break;for(let[dx,dy,,l]of D){let y=p+dy*w+dx;if(a[y]||o[y]||v[y]>=0)continue;v[y]=p;h[y]=l;q.push(y)}}let s="";for(let p=t;p!=f;p=v[p])s=h[p]+s;return s}
-// push-optimal BFS -> moves or ""
-function S(w,a,g,b,p){let n=a.length,G=new Uint8Array(n);for(let x of g)G[x]=1;let V=L(w,a,g),o=new Uint8Array(n),s=new Int32Array(n),m=new Int32Array(n),k=new Int32Array(n),t=0;if(b.some(x=>!V[x]))return"";let B=[b.slice()],Y=[p],A=[-1],F=[-1],T=[-1],M=new Map;for(let x of b)o[x]=1;let l0=E(w,a,o,p,s,++t,k);for(let x of b)o[x]=0;M.set(l0+":"+b.join(","),0);let f=b.every(x=>G[x])?0:-1;for(let h=0;f<0&&h<B.length;h++){let c=B[h];for(let x of c)o[x]=1;let r=++t;E(w,a,o,Y[h],s,r,k);for(let i=0;i<c.length&&f<0;i++){let e=c[i];for(let[dx,dy]of D){let d=dy*w+dx,y=e+d,z=e-d;if(s[z]!=r||a[y]||o[y]||!V[y])continue;o[e]=0;o[y]=1;let N=c.slice();N[i]=y;N.sort((u,v)=>u-v);let K3=E(w,a,o,e,m,++t,k)+":"+N.join(",");o[y]=0;o[e]=1;if(M.has(K3))continue;if(B.length>=25e4){for(let x of c)o[x]=0;return""}M.set(K3,B.length);B.push(N);Y.push(e);A.push(h);F.push(e);T.push(y);if(N.every(x=>G[x])){f=B.length-1;break}}}for(let x of c)o[x]=0}if(f<0)return"";let u=[],v=p,C=b.slice(),s2="";for(let x=f;x>0;x=A[x])u.push([F[x],T[x]]);u.reverse();for(let[fr,to]of u){let d=to-fr,U=D.find(z=>z[1]*w+z[0]==d);for(let x of C)o[x]=1;s2+=K(w,a,o,v,fr-d);for(let x of C)o[x]=0;s2+=U[3];v=fr;C=C.map(x=>x==fr?to:x).sort((x,y)=>x-y)}return s2}
-// rooms
-function Q(w,a,g,b,p){let V=L(w,a,g),r=Math.floor(p/w),c=new Uint8Array(a.length);for(let i=r*w;i<(r+1)*w;i++)if(!a[i]&&!V[i])c[i]=1;if(b.some(x=>c[x]))return null;let q=new Int32Array(a.length).fill(-1),R=[];for(let s=0;s<a.length;s++){if(a[s]||c[s]||q[s]>=0)continue;let z=[s];q[s]=R.length;for(let i=0;i<z.length;i++)for(let[dx,dy]of D){let y=z[i]+dy*w+dx;if(!a[y]&&!c[y]&&q[y]<0){q[y]=R.length;z.push(y)}}R.push({b:[],g:[]})}for(let x of b)R[q[x]].b.push(x);for(let x of g){if(q[x]<0)return null;R[q[x]].g.push(x)}if(R.some(x=>x.b.length!=x.g.length))return null;return R.filter(x=>x.b.length)}
-// solve level
-function V(t){let[w,a,g,b,p]=P(t),R=Q(w,a,g,b,p),mv="",pl=p;if(!R)return S(w,a,g,b,p)||"";for(let r of R){let A=a.slice();for(let o of R)if(o!=r)for(let x of(o.d?o.g:o.b))A[x]=1;let s=S(w,A,r.g.slice().sort((x,y)=>x-y),r.b.slice().sort((x,y)=>x-y),pl);if(!s&&!r.b.every(x=>r.g.includes(x)))return"";mv+=s;let q=pl;for(let ch of s){let c=ch.toLowerCase();q+=c=="u"?-w:c=="d"?w:c=="l"?-1:1}pl=q;r.d=1}return mv}
-for(let k=1;k<6;k++){let id="i00"+k,mv=V(f.readFileSync(I+"/"+id+"/level.txt","utf8"));f.mkdirSync(O+"/"+id,{recursive:true});f.writeFileSync(O+"/"+id+"/solution.txt",mv+"\n")}
+let I=process.env.MAKEFUN_INPUT_DIR,O=process.env.MAKEFUN_OUTPUT_DIR,W,N,m,A,G,B,S,all,cur,k;
+const D=[1,-1,0,0],C="rldu";
+B=(o,s)=>{let v={[s]:s},q=[s];m=s;for(let i=0;i<q.length;i++)for(let d of D){let y=q[i]+d;if(!o[y]&&v[y]==null){v[y]=q[i];if(y<m)m=y;q.push(y)}}return v};
+S=(b,p,o)=>{
+let V={},Q=[[b,p,""]],h=0,ob=x=>{let t=A.slice();for(let y of o.concat(x))t[y]=1;return t};
+B(ob(b),p);V[m+":"+b.join(",")]=1;
+if(b.every(x=>G[x]))return"";
+for(;h<Q.length;h++){
+let[c,pl,mv]=Q[h],oc=ob(c),v=B(oc,pl);
+for(let i=0;i<c.length;i++)for(let j=0;j<4;j++){let e=c[i],d=D[j],y=e+d,z=e-d;
+if(v[z]==null||A[y]||oc[y])continue;
+let n=c.slice();n[i]=y;n.sort((u,w)=>u-w);
+B(ob(n),e);
+let K=m+":"+n.join(",");
+if(V[K])continue;
+V[K]=1;
+let w="";for(let q=z;q!==pl;q=v[q])w=C[D.indexOf(q-v[q])]+w;
+let nm=mv+w+C[j];
+if(n.every(x=>G[x])){all=o.concat(n);cur=e;return nm}
+Q.push([n,e,nm])}}
+return null};
+for(k=1;k<6;k++){
+let id="i00"+k,t=f.readFileSync(I+"/"+id+"/level.txt","utf8"),r=t.trim().split("\n"),w=r[0].length,L=r.join("");N=L.length;
+A=Uint8Array.from(L,c=>c=="#");G=Uint8Array.from(L,c=>".*+".includes(c));let b=[],p;
+for(let i=0;i<N;i++){let c=L[i];if("$*".includes(c))b.push(i);if("@+".includes(c))p=i}
+W=w;D[2]=w;D[3]=-w;b.sort((u,v)=>u-v);
+let hr=(p/W)|0,u=A.slice();
+for(let i=hr*W;i<(hr+1)*W;i++)u[i]=1;
+let R=[],U={};
+for(let x of b){if(U[x])continue;let v=B(u,x),rb=[];for(let y of b)if(v[y]!=null){rb.push(y);U[y]=1}R.push(rb)}
+let mv="";all=b.slice();cur=p;
+for(let rb of R){
+let o=all.filter(x=>!rb.includes(x)),s=S(rb,cur,o);
+if(s===null){mv="";break}
+mv+=s}
+f.mkdirSync(O+"/"+id,{recursive:true});f.writeFileSync(O+"/"+id+"/solution.txt",mv+"\n")}
